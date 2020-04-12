@@ -45,6 +45,15 @@ Once the above step is done, now run MainExploreDTI.
 3. Choose the fulldat folder as an input folder
 4. Create a new folder ('corrected') as an output folder 
 
+### Create track file in startrack
+1. Run StarTrack in matlab
+2. Choose "Multiple files" and use '.mat files' 
+3. Select the new corrected folder as an input
+4. Change Invert Grid / Invert Y
+5. Diffusion Model should be DTI
+6. Change FA value to 0.12
+7. Run 
+
 
 
 
