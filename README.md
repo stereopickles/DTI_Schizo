@@ -27,7 +27,7 @@ Once the above step is done, now run MainExploreDTI.
 2. Type "_sorted.nii" as a suffix
 3. Choose "multiple files"
 4. Select fulldat folder as input folder 
-5. Enter for output folder
+5. Create "sorted" folder as output folder
 
 ### Creating Mat file
 1. In ExploreDTI, go to Calculate DTI*.mat files / Convert raw data to "DTI*.mat"
