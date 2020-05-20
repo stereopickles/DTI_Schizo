@@ -7,6 +7,9 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
 library(tidyverse)
 ```
 
@@ -46,7 +49,7 @@ process_txt <- function(filelist, conditionGroup, dataframe){
     path <- str_c(getwd(), '/', file) # file to read
     subNum <- str_extract(file, 'A000\\d\\d\\d\\d\\d') # extracting subject name
     txtfile <- file(path, 'r') # establishing connection 
-    print(str_c('running subject ', subNum, '...')
+    print(str_c('running subject ', subNum, '...'))
     while(TRUE){
       line <- readLines(txtfile, n=1) # read one line
       if (length(line) == 0){ # end of the file, close and exit
