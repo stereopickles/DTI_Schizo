@@ -193,7 +193,6 @@ demo <- temp %>% #selecting only relevant demographic information (Age, Handedne
 
 demo$label <- c("Age", "Handedness", "Gender", "Ethnicity", "Race", "Marital_St", "Highest_Education") # making label a bit easy to use
 temp <- temp %>% filter(!startsWith(label, "DEMO")) # remove the rest of demographic information
-temp$label <- gsub(" ", "", temp$label) # since I want to extract variable names, remove all whitespace
 
 Keys <- rbind(temp, demo)
 full_behav <- left_join(full_behav, Keys) %>% select(-question_id)
@@ -222,6 +221,11 @@ names(sub_behav)
 # maybe we should have run this sooner. 
 ```
 
+Let's make sure all column names are valid
+
+```{r}
+sub_behav <- sub_behav %>% rename_all(funs(make.names(.)))
+```
 
 ### sanity check
 Checking number of subjects in each conditions for behavioral data
