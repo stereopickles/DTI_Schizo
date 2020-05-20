@@ -1,14 +1,22 @@
-%% This script unzips all nii.gz files and copies bval/bvec/nii to one folder. 
+% This script unzips all nii.gz files and copies bval/bvec/nii to one folder. 
 
-% First, get the list of subject/ses folder names
+% The folder structure must followe this format: (anything inside of ""
+% must be exact)
+    % datafolder(specified at the
+    % beginning)/subject/"ses"number/"dwi"/filename.nii.gz
+
 % Define a data folder.
 
 uiwait(msgbox('Select a data folder'));
 datafolder = uigetdir;
 fprintf('The data folder is "%s".\n', datafolder);
 
+% Choose a working folder (where to copy files over)
 
-%% 
+uiwait(msgbox('Select an output folder'));
+outputfolder = uigetdir;
+fprintf('The output folder is "%s".\n', outputfolder);
+
 
 % Get folder names
 fnames = dir(datafolder);
@@ -16,23 +24,47 @@ dirFlags = [fnames.isdir];
 subfolders = fnames(dirFlags);
 fprintf('\nIterating through %d subject folders\n', length(subfolders))
 
-% create bmat folder
-if exist('fulldat') == 7
+% create output foldesr
+fulldatpath = fullfile(outputfolder, 'fulldat');
+sortedpath = fullfile(outputfolder, 'sorted');
+correctedpath = fullfile(outputfolder, 'corrected');
+
+if exist(fulldatpath) == 7
     fprintf('\nfulldat folder exits. Removing and recreating...\n')
-    rmdir fulldat s
-    mkdir fulldat
-    fileattrib fulldat '+w'
+    rmdir (fulldatpath, 's')
+    mkdir (fulldatpath)
+    fileattrib (fulldatpath, '+w')
 else
-    mkdir fulldat
-    fileattrib fulldat '+w'
+    fprintf('\nCreating fulldat folder...\n')
+    mkdir (fulldatpath)
+    fileattrib (fulldatpath, '+w')
+end
+
+if exist(sortedpath) == 7
+    fprintf('\nsorted folder exits. Removing and recreating...\n')
+    rmdir (sortedpath, 's')
+    mkdir (sortedpath)
+    fileattrib (sortedpath, '+w')
+else
+    fprintf('\nCreating sorted folder...\n')
+    mkdir (sortedpath)
+    fileattrib (sortedpath, '+w')
+end
+
+if exist(correctedpath) == 7
+    fprintf('\ncorrected folder exits. Removing and recreating...\n')
+    rmdir (correctedpath, 's')
+    mkdir (correctedpath)
+    fileattrib (correctedpath, '+w')
+else
+    fprintf('\nCreating corrected folder...\n')
+    mkdir (correctedpath)
+    fileattrib (correctedpath, '+w')
 end
 
 
-% most of the code below are adaptation of https://github.com/stijnimaging/ExploreDTI_scripts/blob/master/README.md
-
 for k = 3: length(subfolders) % looping through each subject 
-    % I'm assuming that all files have same naming convention
-    % ("subfolder_sesfolder_run-runnumber_dwi.extension")
+
 
     subname = subfolders(k).name;
     sesnames = dir(sprintf('%s/%s/ses*', datafolder, subname));
@@ -54,11 +86,11 @@ for k = 3: length(subfolders) % looping through each subject
 
             % copying bval, bvec & nii files into a fulldat folder 
             bvalFile = sprintf('%s/%s.bval', path, fname);
-            bvalNew = sprintf("fulldat/%s.bval", fname);
+            bvalNew = sprintf("%s/%s.bval", fulldatpath, fname);
             bvecFile = sprintf('%s/%s.bvec', path, fname);
-            bvecNew = sprintf("fulldat/%s.bvec", fname);
+            bvecNew = sprintf("%s/%s.bvec", fulldatpath, fname);
             niiFile = sprintf('%s/%s.nii', path, fname);
-            niiNew = sprintf("fulldat/%s.nii", fname);
+            niiNew = sprintf("%s/%s.nii", fulldatpath, fname);
             copyfile(bvalFile, bvalNew);
             copyfile(bvecFile, bvecNew);    
             copyfile(niiFile, niiNew);   
@@ -70,7 +102,7 @@ for k = 3: length(subfolders) % looping through each subject
     end
 end
 
-finallist = dir(fullfile('fulldat/', '*.nii'));
+finallist = dir(fullfile(correctedpath, '*.nii'));
 
 fprintf('\nTotal %d nifti files.\n', length(finallist))
 

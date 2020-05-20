@@ -1,0 +1,300 @@
+---
+title: "001_data_prep"
+author: "Eunjoo Byeon"
+date: "5/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+
+# Data Wrangling
+## Import
+
+```{r}
+hc_path = 'data/HC'
+sz_path = 'data/SZ'
+
+# getting a list of all txt file
+hc_files = list.files(hc_path, 'txt', full.names = T)
+sz_files = list.files(sz_path, 'txt', full.names = T)
+```
+
+
+Since overall length of information may not be consistent throughout, and the file iteself does not contain subject information, I'll run through one at a time.
+
+Each stat file (txt) from dissection contains multiple (2 to 4, eventually 4) track groups. 
+Each track groups (must) contain below 10 categories in 11 lines as below.
+|  TrackGroup, Track count, Voxel Count, Mean values (Length, FA_Trk, Angtrk, FA, AD, MD, RD).
+
+
+```{r}
+# creating a dummy dataframe to fill
+df <- data_frame(condition = "NONE", subnum = '', track_group = '', track_count = '', voxel_count = '', mean_length = '', mean_FAtrk = '', mean_Angtrk = '', mean_FA = '', mean_AD = '', mean_MD = '', mean_RD = '', error = '')
+```
+
+### TODO ###
+add a script to match the subNum from filename to the FA/MD file reference name
+
+```{r}
+# Iterate over each txt file
+process_txt <- function(filelist, conditionGroup, dataframe){
+  for (file in filelist){
+    path <- str_c(getwd(), '/', file) # file to read
+    subNum <- str_extract(file, 'A000\\d\\d\\d\\d\\d') # extracting subject name
+    txtfile <- file(path, 'r') # establishing connection 
+    print(str_c('running subject ', subNum, '...')
+    while(TRUE){
+      line <- readLines(txtfile, n=1) # read one line
+      if (length(line) == 0){ # end of the file, close and exit
+          close (txtfile)
+          break
+      } else { 
+        if (str_detect(line, "TrackGroup")){ # make sure this is the first line of the track group
+          trackGroup <- sub('TrackGroup: ', "", line)
+          lines <- readLines(txtfile, n=10) # read the following 10 lines
+          lines <- gsub(" ", "", lines) # since I want to extract variable names, remove all whitespace
+          # store all relevant values
+          for (i in 1:length(lines)){
+            if (i != 3){ # this line has no value
+              if (i %in% seq(7,10)){ # these are the lines with FA, MD, RD, AD values. Orders are not consistent, so we figure out the variable names by extracting the last two words before the value.
+                if (str_extract(lines[i], 'A000\\d\\d\\d\\d\\d') != subNum){ # but first check if this is the right data (sanity check for administrative error)
+                  err = TRUE
+                } else {
+                  err = FALSE
+                }
+                varName <- paste(str_sub(lines[i], 62, 63))
+              } else {
+                varName <- paste(sub(':.*', '', lines[i])) # extracting variable names
+              }
+            assign(varName, sub('.*:', '', lines[i])) # assigning values to the variables
+            }
+          }
+          # end of one trackgroup, add a row
+            dataframe <- add_row(condition = conditionGroup, subnum = subNum, track_group = trackGroup, track_count = Trackcount, voxel_count = Voxelcount, mean_length = Length, mean_FAtrk = FA_Trk, mean_Angtrk = AngTrk, mean_FA = FA, mean_AD = AD, mean_MD = MD, mean_RD = RD, error = err, dataframe)
+        }  
+      }
+    }
+  } 
+  dataframe
+}
+
+
+df <- process_txt(hc_files, 'HC', df) # adding healthy controls
+df <- process_txt(sz_files, 'SZ', df) # adding patient groups
+df <- df[-1,] # removing a dummy row
+head(df)
+tail(df)
+```
+
+### Checking for errors
+```{r}
+# ones that filename don't match the data 
+df %>% filter(error == TRUE) 
+```
+
+```{r}
+# duplicate data or multiple subjects
+df %>% group_by(subnum, track_group) %>% summarise(n = n()) %>% filter(n > 1)
+```
+
+
+
+## Importing behavioral data
+
+There are 3 sets of behavioral data.
+SZ: 
+schizconnect_COBRE_assessmentData_10541.csv
+
+HC:
+schizconnect_COBRE_assessmentData_10762.csv
+
+COBRE_Data_Dictionary.xlsx : contains key
+
+
+```{r}
+sz_behav <- read_csv('data/SZ/Assessment/schizconnect_COBRE_assessmentData_10541.csv')
+hc_behav <- read_csv('data/HC/Assessment/schizconnect_COBRE_assessmentData_10762.csv')
+
+library('readxl')
+behavKey <- read_excel('data/SZ/Assessment/COBRE_Data_Dictionary.xlsx')
+
+```
+
+
+### Cleaning behavioral data
+
+```{r}
+sz_behav_df <- sz_behav %>% 
+  select(subjectid, assessment, assessment_description, question_id, question_value) %>%
+  mutate(condition="SZ")
+hc_behav_df <- hc_behav %>% 
+  select(subjectid, assessment, assessment_description, question_id, question_value) %>% 
+  mutate(condition = "HC")
+
+sz_behav_df$assessment <- str_extract(sz_behav_df$assessment, pattern = "(?<=>)(.*?)(?=>)") # Extracting only the assessment type
+
+hc_behav_df$assessment <- str_extract(hc_behav_df$assessment, pattern = "(?<=>)(.*?)(?=>)") 
+
+names(behavKey) <- c("instrument", "q_label", "q_desc", "question_id", "r_label", "r_val", "r_desc") # cleaning up the column name
+
+Key1 <- behavKey %>% select (instrument, q_label, question_id) # extracting key values
+
+sz_behav_df <- left_join(sz_behav_df, Key1)
+hc_behav_df <- left_join(hc_behav_df, Key1)
+combined_behav <- rbind(sz_behav_df, hc_behav_df) # combining two conditions and adding key info
+
+```
+
+Spread the dataframe (pivot) so each measure is on its own column
+
+```{r}
+full_behav <- combined_behav %>% select(subjectid, condition, question_id, question_value)
+full_behav <- full_behav %>% filter(!duplicated(full_behav)) # removing duplicates
+
+# seems like some medication logs include 2 values for the sake of this analyses, I will average the two for now. (I filter this value out later, since I'm not using it for my analyses. But just in case.)
+
+tmp <- full_behav %>% group_by(subjectid, question_id) %>% mutate(row = row_number()) %>% filter(row != 1)  # Select the question_id that has more than 1 row per participant
+troublemakers <- unique(tmp$question_id) 
+mean_scores <- full_behav %>% # averaging out the two values
+  filter(question_id %in% troublemakers) %>% 
+  filter (!is.na(question_value)) %>% 
+  group_by (subjectid, question_id) %>% 
+  summarise(question_value = mean(question_value)) 
+
+
+full_behav<- full_behav %>% filter(!question_id %in% troublemakers) # replace those value
+full_behav <- bind_rows(full_behav, mean_scores)
+
+```
+
+Before we pivot the dataframe, let's change question ids to something that's a bit more self-explanatory.
+
+```{r}
+Keys <- data.frame(question_id = unique(full_behav$question_id)) #creating key data frame
+temp <- left_join(Keys, behavKey)
+
+#I'm going to only look at behavioral task scores, demographic info, and PANSS scale. Edit this code if you want something else.
+
+temp <- temp %>% 
+  mutate(label = ifelse(startsWith(question_id, "CNP"), q_label, ifelse(startsWith(question_id, "CODEM"), str_c("DEMO-", q_label), ifelse(startsWith(question_id, "FIPAN"), str_c("PANSS-", q_label), NA)))) %>%
+  select(question_id, label) %>% 
+  filter(!is.na(label))
+
+demo <- temp %>% #selecting only relevant demographic information (Age, Handedness, Gender, Ethnicity, Race, Marital Status, Highest level of education)
+  filter(question_id %in% c("CODEM_1", "CODEM_10", "CODEM_2", "CODEM_3", "CODEM_3A", "CODEM_4", "CODEM_5"))
+
+demo$label <- c("Age", "Handedness", "Gender", "Ethnicity", "Race", "Marital_St", "Highest_Education") # making label a bit easy to use
+temp <- temp %>% filter(!startsWith(label, "DEMO")) # remove the rest of demographic information
+temp$label <- gsub(" ", "", temp$label) # since I want to extract variable names, remove all whitespace
+
+Keys <- rbind(temp, demo)
+full_behav <- left_join(full_behav, Keys) %>% select(-question_id)
+head(full_behav, 10)
+```
+```{r}
+#value 9999 or 8888 is not applicable or missing, so change to that.
+full_behav <- full_behav %>% mutate(question_value = ifelse(question_value %in% c(8888, 9999), NA, question_value))
+
+```
+
+
+Finally pivoting the dataframe... 
+```{r}
+sub_behav <- full_behav %>% filter(!is.na(label)) %>% pivot_wider(names_from = label, values_from = question_value)
+head(sub_behav, 10)          
+
+```
+
+Unfortunately, it seems like some information is just not there for anybody If that's the case, drop that column.
+
+```{r}
+sub_behav <- sub_behav[!sapply(sub_behav, function(x) all(is.na(x)))]
+names(sub_behav)
+# unfortunately it seemed to have dropped most of demographic data
+# maybe we should have run this sooner. 
+```
+
+
+### sanity check
+Checking number of subjects in each conditions for behavioral data
+
+```{r}
+sub_behav %>% group_by(condition) %>% summarise(counts = n())
+```
+
+
+## Merging behav data with imaging data
+
+```{r}
+
+fulldf <- left_join(df, sub_behav, by = c("subnum" = "subjectid", "condition"))
+glimpse(fulldf)
+
+```
+
+
+
+
+# next problems to fix..
+## Change track_group names to be consistent
+```{r}
+unique(fulldf$track_group)
+fulldf <- fulldf %>% 
+  mutate(track_group = ifelse(track_group %in% c('Left', 'FATL', 'FAT_L', 'IFGL-SFGL', 'Aslant_L', 'Aslant_:'), 'FATL', ifelse(track_group %in% c('Right', 'FATR', 'FAT_R', 'IFGR-SFGR', 'Aslant_R'), 'FATR', ifelse(track_group %in% c('UF_R', 'UF__R'), 'UF_R', track_group)))) %>%
+  mutate(track_group = as.factor(as.character(track_group)))
+
+fulldf %>% group_by(condition, track_group) %>% summarise(count = n())
+```
+
+## Change number measures to be numbers 
+
+First, I need to separate out mean and SEM
+
+```{r}
+fulldf <- fulldf %>% mutate(track_count = as.integer(track_count), voxel_count = as.integer(voxel_count)) # change counts as integers
+
+#I'll write a quick function to separate mean and SEM 
+SEM_log <- function(x){
+  x <- str_remove_all(x, "[[:alpha:]]") #remove all texts (e.g. "mm")
+  res <- list(mean = str_split(x, "\\+/-")[[1]][1], SEM = str_split(x, "\\+/-")[[1]][2]) # number before +/- sign is mean and the latter is SEM
+  return (res)
+}
+
+varlist <- c('mean_length', 'mean_FAtrk', 'mean_Angtrk', 'mean_FA', 'mean_AD', 'mean_MD', 'mean_RD') # columns to run through this function
+
+for (x in varlist){
+  print(str_c('running...', x))
+  semname <- paste(x, '_SEM', sep="")
+  X <-fulldf[[x]]
+  fulldf[[x]] <- unlist(t(sapply(1:length(X), function(x){SEM_log(X[x])}))[,1])
+  fulldf[[semname]] <- unlist(t(sapply(1:length(X), function(x){SEM_log(X[x])}))[,2])
+}
+
+
+```
+
+```{r}
+semlist <- paste(varlist, "_SEM", sep="") # column list for SEMs
+collist <- append(varlist, semlist) # colum list for means and SEMs
+
+fulldf[collist] <- sapply(fulldf[collist], as.double) # make all of these double floats
+fulldf[collist] <- fulldf[collist] %>% mutate_all(~replace(., is.na(.), 0)) # if NA they are 0 
+
+summary(fulldf) # summary of final dataframe
+```
+
+
+# Export
+Writing dataframe out as a Rdata file and a csv.
+We'll use Rdata file in analyses. 
+
+```{r}
+write_csv(fulldf, "fulldf.csv")
+save(fulldf, file = "fulldf.Rdata")
+```
+
+
