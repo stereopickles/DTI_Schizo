@@ -97,6 +97,7 @@ tail(df)
 ```{r}
 # ones that filename don't match the data 
 df %>% filter(error == TRUE) 
+df <- df %>% select(-error)
 ```
 
 ```{r}
