@@ -16,7 +16,7 @@ Use 001_data_prep.Rmd
 Stat files should be in .txt file format AND should contain subject name as "A000#####".
 We extract the frontal aslant tracts (FATL, FATR) and the uncinate fasciculus (UF_L, UF_R).
 Data file structure must be as below.
---- data --- HC --- Assessment --- COBRE_Data_Dictionary.xlsx
+```
 data
   ├─── HC
   │    ├── Assessment
@@ -28,5 +28,5 @@ data
        │     └── schizoconnect_COBRE_assessmentData_#####.csv
        └── txt files (e.g. sub-A00000001.txt)
        
-       
+ ```      
        
