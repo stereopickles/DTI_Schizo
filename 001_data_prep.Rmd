@@ -151,6 +151,8 @@ sz_behav_df <- left_join(sz_behav_df, Key1)
 hc_behav_df <- left_join(hc_behav_df, Key1)
 combined_behav <- rbind(sz_behav_df, hc_behav_df) # combining two conditions and adding key info
 
+lst <- combined_behav %>% group_by(assessment_description) %>% slice(1) %>% select(assessment, assessment_description) %>% arrange(assessment_description)
+write_csv(lst, 'behav_test.csv')
 ```
 
 Spread the dataframe (pivot) so each measure is on its own column
@@ -239,9 +241,7 @@ sub_behav %>% group_by(condition) %>% summarise(counts = n())
 
 ```{r}
 
-fulldf <- left_join(df, sub_behav, by = c("subnum" = "subjectid", "condition"))
-glimpse(fulldf)
-
+fdf <- left_join(df, sub_behav, by = c("subnum" = "subjectid", "condition"))
 ```
 
 
@@ -250,13 +250,16 @@ glimpse(fulldf)
 # next problems to fix..
 ## Change track_group names to be consistent
 ```{r}
-unique(fulldf$track_group)
-fulldf <- fulldf %>% 
-  mutate(track_group = ifelse(track_group %in% c('Left', 'FATL', 'FAT_L', 'IFGL-SFGL', 'Aslant_L', 'Aslant_:'), 'FATL', ifelse(track_group %in% c('Right', 'FATR', 'FAT_R', 'IFGR-SFGR', 'Aslant_R'), 'FATR', ifelse(track_group %in% c('UF_R', 'UF__R'), 'UF_R', track_group)))) %>%
+unique(fdf$track_group)
+fulldf <- fdf %>% 
+  mutate(track_group = ifelse(track_group %in% c('Left', 'FATL', 'FAT_L', 'IFGL-SFGL', 'Aslant_L', 'Aslant_:'), 'FATL', ifelse(track_group %in% c('mid-coronal', 'Right', 'FATR', 'FAT_R', 'IFGR-SFGR', 'Aslant_R'), 'FATR', ifelse(track_group %in% c('UF_R', 'UF__R', 'UF-R'), 'UF_R', track_group)))) %>%
   mutate(track_group = as.factor(as.character(track_group)))
-
 fulldf %>% group_by(condition, track_group) %>% summarise(count = n())
 ```
+
+
+
+
 
 ## Change number measures to be numbers 
 
@@ -293,6 +296,18 @@ fulldf[collist] <- sapply(fulldf[collist], as.double) # make all of these double
 fulldf[collist] <- fulldf[collist] %>% mutate_all(~replace(., is.na(.), 0)) # if NA they are 0 
 
 summary(fulldf) # summary of final dataframe
+```
+
+# Elimination
+For each group, if any one side is 0, remove the data. (e.g. if FATL is missing remove that subject from FATL/FATR but not in UFs) 
+
+```{r}
+missing_tracts <- fulldf %>% filter(track_count == 0)
+missing_FAT <- missing_tracts %>% filter(track_group %in% c("FATR", "FATL"))
+missing_UF <- missing_tracts %>% filter(track_group %in% c("UFL", "UFR"))
+FATlist <- unique(missing_FAT$subnum)
+UFlist <- unique(missing_UF$subnum)
+fulldf <- fulldf %>% filter(!(subnum %in% FATlist) | track_group %in% c('UF_L', 'UF_R'))
 ```
 
 
