@@ -27,6 +27,9 @@ data
        │     ├── COBRE_Data_Dictionary.xlsx
        │     └── schizoconnect_COBRE_assessmentData_#####.csv
        └── txt files (e.g. sub-A00000001.txt)
-       
+ 
+ 
  ```      
+ ## Data analysis
+ Details on data anlysis will be live once manuscript is complete.
        
