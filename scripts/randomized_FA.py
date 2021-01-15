@@ -12,6 +12,7 @@ new numbers and generate a key reference of old-new name match
 
 import re
 import os
+from shutil import copy2
 
 def find_files(list_of_dir, dir_word = 'sub', file_word = 'FA'):
     ''' 
@@ -35,9 +36,12 @@ def find_files(list_of_dir, dir_word = 'sub', file_word = 'FA'):
     return full_paths
         
 
-def copy_files(fpath, new_path): 
-    ''' copy over a file to the new path '''
-    pass
+def copy_files(full_paths, new_path): 
+    ''' 
+    copy over all file from a list to the new path
+    '''
+    for fp in full_paths:
+        shutil.copy2(fp, new_path)
  
 
 
