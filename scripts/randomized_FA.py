@@ -13,8 +13,9 @@ new numbers and generate a key reference of old-new name match
 import re
 import os
 from shutil import copy2
+import numpy as np
 
-def find_files(list_of_dir, dir_word = 'sub', file_word = 'FA'):
+def find_files(list_of_dir, dir_word = 'sub', file_word = 'FA', file_type = 'nii'):
     ''' 
     from the list of directories
     find sub-directories starting with the dir_word
@@ -29,7 +30,7 @@ def find_files(list_of_dir, dir_word = 'sub', file_word = 'FA'):
         
     full_paths = []
     for fp in paths:
-        fnames = [x for x in os.listdir(fp) if file_word in x]
+        fnames = [x for x in os.listdir(fp) if file_word in x and x.endswith(file_type)]
         full_path = os.join(fp, fnames)
         full_paths.join(full_path)
         
@@ -45,13 +46,18 @@ def copy_files(full_paths, new_path):
  
 
 
-def random_assignment(fpath):
+def random_assignment(fpath, key_word = 'sub'):
     ''' 
-    extract the current subject number, 
+    extract the current subject number from file path
     assign a new number, 
     return a dictionary of old/new
     '''
-    pass
+    paths = os.listdir(fpath)
+    keys = [re.findall('(?<=A)[0-9]*', x) for x in paths]
+    new_keys = np.random.permutation(1000)[:len(keys)]
+    ref = dict(zip(keys, new_keys))
+    return ref
+
 
 def rename_files(fpath, old_name, new_name):
     pass
