@@ -42,11 +42,10 @@ def copy_files(full_paths, new_path):
     copy over all file from a list to the new path
     '''
     for fp in full_paths:
-        shutil.copy2(fp, new_path)
+        copy2(fp, new_path)
  
 
-
-def random_assignment(fpath, key_word = 'sub'):
+def random_assignment(fpath):
     ''' 
     extract the current subject number from file path
     assign a new number, 
@@ -54,22 +53,33 @@ def random_assignment(fpath, key_word = 'sub'):
     '''
     paths = os.listdir(fpath)
     keys = [re.findall('(?<=A)[0-9]*', x) for x in paths]
-    new_keys = np.random.permutation(1000)[:len(keys)]
-    ref = dict(zip(keys, new_keys))
+    new_keys = [str(x) for x in np.random.permutation(1000)[:len(keys)]]    
+    old = tuple(zip(keys, paths))
+    ref = dict(zip(new_keys, old))
     return ref
 
 
 def rename_files(fpath, old_name, new_name):
-    pass
+    os.rename(os.join(fpath, old_name), os.join(fpath, new_name))
 
 
-def rand_assignment_processing():
+def rand_assignment_processing(fpath):
     '''
     take a directory then rename all files 
     and return the dictionary of old-new file name references
     '''
     ref = random_assignment(fpath)
-    for old, new in ref: 
+    
+    for k in ref.keys(): 
+        old_fn = 
+        new_fn = 
         rename_files(fpath, old, new)
     
     return ref
+
+list_of_dir = []
+new_dir = None
+full_paths = find_files(list_of_dir)
+copy_files(full_paths, new_dir)
+ref = rand_assignment_processing(new_dir)
+
