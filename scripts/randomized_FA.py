@@ -14,8 +14,9 @@ import re
 import os
 from shutil import copy2
 import numpy as np
+import joblib
 
-def find_files(list_of_dir, dir_word = 'sub', file_word = 'FA', file_type = 'nii'):
+def find_files(list_of_dir, dir_word = 'sub', file_word = '_FA.', file_type = 'nii'):
     ''' 
     from the list of directories
     find sub-directories starting with the dir_word
@@ -24,18 +25,19 @@ def find_files(list_of_dir, dir_word = 'sub', file_word = 'FA', file_type = 'nii
     ''' 
     paths = []
     for dir_ in list_of_dir: 
-        path_ = [x[0] for x in os.walk(dir_) if x[0].startswith(dir_word)]
-        full_path = os.join(dir_, path_)
-        paths.append(full_path)
+        path_ = [x for x in os.listdir(dir_) if os.path.isdir(dir_) and x.startswith(dir_word)]
+        path_ = [x for x in path_ if '.' not in x]
+        full_path = [os.path.join(dir_, x) for x in path_]
+        paths.extend(full_path)
         
     full_paths = []
     for fp in paths:
         fnames = [x for x in os.listdir(fp) if file_word in x and x.endswith(file_type)]
-        full_path = os.join(fp, fnames)
-        full_paths.join(full_path)
+        full_path = [os.path.join(fp, x) for x in fnames]
+        full_paths.extend(full_path)
         
     return full_paths
-        
+
 
 def copy_files(full_paths, new_path): 
     ''' 
@@ -52,15 +54,15 @@ def random_assignment(fpath):
     return a dictionary of old/new
     '''
     paths = os.listdir(fpath)
-    keys = [re.findall('(?<=A)[0-9]*', x) for x in paths]
+    keys = [re.findall('(?<=A)[0-9]*', x)[0] for x in paths]
     new_keys = [str(x) for x in np.random.permutation(1000)[:len(keys)]]    
     old = tuple(zip(keys, paths))
     ref = dict(zip(new_keys, old))
     return ref
-
+# {new key : (subnum, fn)}
 
 def rename_files(fpath, old_name, new_name):
-    os.rename(os.join(fpath, old_name), os.join(fpath, new_name))
+    os.rename(os.path.join(fpath, old_name), os.path.join(fpath, new_name))
 
 
 def rand_assignment_processing(fpath):
@@ -69,17 +71,25 @@ def rand_assignment_processing(fpath):
     and return the dictionary of old-new file name references
     '''
     ref = random_assignment(fpath)
+    joblib.dump(ref, 'ref')
     
+
     for k in ref.keys(): 
-        old_fn = 
-        new_fn = 
-        rename_files(fpath, old, new)
+        old_fn = ref[k][1]
+        extension = os.path.splitext(old_fn)[1][1:]
+        new_fn = k + '.' + extension
+        rename_files(fpath, old_fn, new_fn)
     
     return ref
 
-list_of_dir = []
-new_dir = None
-full_paths = find_files(list_of_dir)
-copy_files(full_paths, new_dir)
-ref = rand_assignment_processing(new_dir)
+list_of_dir = [r'D:\Google Drive (Columbia)\COLUMBIA\DSI-Schizo\Data2020\DATA040320\HC\COBRE_prep\corrected',
+               r'D:\Google Drive (Columbia)\COLUMBIA\DSI-Schizo\Data2020\DATA040320\SZ\COBRE_prep\corrected']
+new_dir = r'D:\Google Drive (Columbia)\COLUMBIA\DSI-Schizo\Data2020\DATA040320\randomized_FA_files'
+#full_paths = find_files(list_of_dir)
+#copy_files(full_paths, new_dir)
+
+#ref = rand_assignment_processing(new_dir)
+
+fpath = r'D:\Google Drive (Columbia)\COLUMBIA\DSI-Schizo\Data2020\DATA040320\randomized_FA_files'
+ref = rand_assignment_processing(fpath)
 
