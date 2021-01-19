@@ -6,3 +6,4 @@ log/
 duplicates.txt
 .DS_Store
 scripts/.ipynb_checkpoints/randomized_FA-checkpoint.py
+scripts/ref
