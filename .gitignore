@@ -7,3 +7,4 @@ duplicates.txt
 .DS_Store
 scripts/.ipynb_checkpoints/randomized_FA-checkpoint.py
 scripts/ref
+scripts/.ipynb_checkpoints/saving_ref-checkpoint.ipynb
